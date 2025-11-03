@@ -3,84 +3,146 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Standalone Heckel Diff Check</title>
+  <title>Heckel Diff Validator</title>
 
   <style>
-/* BASE STYLES (Applies to all screens, effectively the MOBILE/flex-col state) */
+/* BASE STYLES (Mobile: Stack vertically, Dark Theme equivalent to Tailwind) */
 body {
   font-family: sans-serif;
   display: flex;
   flex-direction: column;
-  padding: 10px;
-  gap: 10px;
-  background-color: #1e1e1e;
-  color: #d4d4d4;
-  height: 100vh; /* Use full height */
+  padding: 16px; /* p-4 */
+  gap: 16px; /* gap-4 */
+  background-color: #1e1e1e; /* bg-gray-900 */
+  color: #d4d4d4; /* text-gray-100 */
+  height: 100vh;
+  margin: 0;
 }
 
 .container {
   display: flex;
-  flex-direction: column; /* Default: Stack vertically for mobile */
-  gap: 10px;
+  flex-direction: column; 
+  gap: 16px;
   width: 100%;
-  flex: 1; /* Allows the container to fill space */
+  flex: 1;
 }
 
 .column {
   display: flex;
   flex-direction: column;
-  flex: 1 0 auto; /* Allow growth, no shrinkage, minimum size auto (stacking) */
+  flex: 1 0 auto;
+  min-height: 200px;
 }
+
+.input-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px; /* mb-2 */
+}
+
+.label-old { color: #60a5fa; } /* text-blue-400 */
+.label-new { color: #4ade80; } /* text-green-400 */
+.label-result { color: #c084fc; } /* text-purple-400 */
+
+.button {
+  padding: 4px 12px; /* px-3 py-1 */
+  border-radius: 4px; /* rounded */
+  font-size: 12px; /* text-xs */
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.2s;
+  color: white;
+}
+
+.button-old { background-color: #2563eb; } /* bg-blue-600 */
+.button-old:hover { background-color: #1d4ed8; } /* hover:bg-blue-700 */
+
+.button-new { background-color: #16a34a; } /* bg-green-600 */
+.button-new:hover { background-color: #15803d; } /* hover:bg-green-700 */
+
+.run-button {
+  background-color: #9333ea;
+  font-size: 14px;
+  padding: 8px 16px;
+  margin-top: 10px;
+}
+.run-button:hover { background-color: #7e22ce; }
+
 
 textarea {
   flex: 1;
-  padding: 10px;
-  border: 1px solid #444;
-  background-color: #252526;
-  color: #d4d4d4;
+  background-color: #252526; /* bg-gray-800 */
+  border: 1px solid #444; /* border-gray-700 */
+  border-radius: 6px; /* rounded */
+  padding: 12px; /* p-3 */
   font-family: monospace;
   font-size: 14px;
   resize: none;
-}
-
-.result-box {
-  background-color: #2d2d30;
-  border: 1px solid #444;
-  padding: 10px;
-  overflow-y: auto;
-  min-height: 100px;
-  font-family: monospace;
+  color: #d4d4d4;
+  outline: none;
+  line-height: 1.4;
 }
 
 /* DESKTOP STYLES (Media Query equivalent of lg:flex-row) */
-@media (min-width: 1024px) { /* Adjust to a typical desktop breakpoint */
+@media (min-width: 1024px) {
   .container {
-    flex-direction: row; /* Switch to horizontal row on desktop */
+    flex-direction: row; 
   }
-
   .column {
-    flex: 1 1 0%; /* 1:1:1 split for desktop view */
+    flex: 1 1 0%; 
+    min-height: 0;
   }
 }
-
-.status-ok { color: #50fa7b; }
-.status-fail { color: #ff5555; }
   </style>
 </head>
 <body>
 
   <div class="container">
+    
     <div class="column">
-      <label>Original Document (OD)</label>
-      <textarea id="oldText" placeholder="Paste Old Text Here (File A)">The quick brown fox
+      <div class="input-header">
+        <label class="text-sm font-semibold label-old">Original Document (OD)</label>
+        <label class="button button-old">
+          Upload File A
+          <input 
+            type="file" 
+            id="oldFile"
+            onchange="handleFileUpload(event, 'oldText')"
+            accept=".txt,.log,.md,text/*"
+            class="hidden"
+            style="display: none;"
+          />
+        </label>
+      </div>
+      <textarea
+        id="oldText"
+        placeholder="Enter old text or upload a file..."
+      >The quick brown fox
 jumps over the lazy dog
 in the moonlight
 with great enthusiasm</textarea>
     </div>
 
     <div class="column">
-      <label>Bigger Document (BD)</label>
-      <textarea id="newText" placeholder="Paste New Text Here (File B)">The quick brown fox
+      <div class="input-header">
+        <label class="text-sm font-semibold label-new">Bigger Document (BD)</label>
+        <label class="button button-new">
+          Upload File B
+          <input 
+            type="file" 
+            id="newFile"
+            onchange="handleFileUpload(event, 'newText')"
+            accept=".txt,.log,.md,text/*"
+            class="hidden"
+            style="display: none;"
+          />
+        </label>
+      </div>
+      <textarea
+        id="newText"
+        placeholder="Enter new text or upload a file..."
+      >The quick brown fox
 leaps over the lazy dog
 in the moonlight
 under the stars
@@ -88,33 +150,35 @@ with great enthusiasm</textarea>
     </div>
 
     <div class="column">
-      <label>Deletions Only (Missing Data from OD)</label>
-      <div id="results" class="result-box">
-        Running diff check...
-      </div>
+      <label class="text-sm font-semibold label-result mb-2">Additions & Deletions (JSON Output)</label>
+      <textarea
+        id="diffResult"
+        readOnly
+        placeholder="Diff results (JSON) will appear here..."
+      ></textarea>
     </div>
+
   </div>
 
-  <button onclick="runDiff()">Run Diff Check</button>
+  <button class="button run-button" onclick="runDiff()">Run Diff Check</button>
 
   <script>
 function heckelDiff(oldLines, newLines) {
-  // 1. Initialize arrays and symbol table
-  const OA = oldLines.map((line, i) => ({ line, symbol: null, entry: null }));
-  const NA = newLines.map((line, i) => ({ line, symbol: null, entry: null }));
+  // Full implementation of Paul Heckel's diff algorithm (corrected)
+  
+  const OA = oldLines.map((line, i) => ({ line, index: i, symbol: null, entry: null }));
+  const NA = newLines.map((line, i) => ({ line, index: i, symbol: null, entry: null }));
   const table = {};
 
   const initializeEntry = (line) => table[line] = table[line] || { NC: 0, OC: 0, OLNO: null, NLNO: null };
 
-  // Pass 1: Index new file
+  // Pass 1 & 2: Index files (Combined for brevity)
   NA.forEach((item, i) => {
     const entry = initializeEntry(item.line);
     entry.NC++;
     entry.NLNO = i;
     item.entry = entry;
   });
-
-  // Pass 2: Index old file
   OA.forEach((item, i) => {
     const entry = initializeEntry(item.line);
     entry.OC++;
@@ -131,7 +195,7 @@ function heckelDiff(oldLines, newLines) {
     }
   });
 
-  // Pass 4: Growing matches forward (FIXED logic applied here)
+  // Pass 4: Growing matches forward (Corrected: only sets symbol, not entry's OLNO/NLNO)
   for (let i = 0; i < OA.length - 1; i++) {
     if (OA[i].symbol === '=') {
       const j = OA[i].entry.NLNO; 
@@ -144,7 +208,7 @@ function heckelDiff(oldLines, newLines) {
     }
   }
 
-  // Pass 5: Growing matches backward (FIXED logic applied here)
+  // Pass 5: Growing matches backward (Corrected: only sets symbol)
   for (let i = OA.length - 1; i > 0; i--) {
     if (OA[i].symbol === '=') {
       const j = OA[i].entry.NLNO;
@@ -157,48 +221,139 @@ function heckelDiff(oldLines, newLines) {
     }
   }
 
-  // Pass 6: Final determination
+  // Pass 6: Detect moved blocks and true deletions/additions
+
+  // Mark all unmatched lines that appear in both files as 'M' (Move/Change Candidate)
+  OA.forEach(item => {
+    if (item.symbol === null && item.entry.NC > 0) {
+      item.symbol = 'M';
+    }
+  });
+  
+  NA.forEach(item => {
+    if (item.symbol === null && item.entry.OC > 0) {
+      item.symbol = 'M';
+    }
+  });
+
+  // Identify sequences of 'M' lines (blocks)
+  const getBlocks = (arr) => {
+    const blocks = [];
+    let currentBlock = [];
+    arr.forEach((item) => {
+      if (item.symbol === 'M') {
+        currentBlock.push(item);
+      } else if (currentBlock.length > 0) {
+        blocks.push(currentBlock);
+        currentBlock = [];
+      }
+    });
+    if (currentBlock.length > 0) blocks.push(currentBlock);
+    return blocks;
+  };
+
+  const oldBlocks = getBlocks(OA);
+  const newBlocks = getBlocks(NA);
+  
+  // Match moved blocks
+  oldBlocks.forEach(oldBlock => {
+    const oldBlockLines = oldBlock.map(item => item.line).join('\n');
+    newBlocks.forEach(newBlock => {
+      const newBlockLines = newBlock.map(item => item.line).join('\n');
+      if (oldBlockLines === newBlockLines && oldBlockLines.length > 0) {
+        // Mark as moved '⇄'
+        oldBlock.forEach(item => item.symbol = '⇄');
+        newBlock.forEach(item => item.symbol = '⇄');
+      }
+    });
+  });
+
+  // Final Pass: Mark true deletions ('-') and additions ('+')
   OA.forEach(item => {
     if (item.symbol === null) {
-      item.symbol = item.entry.NC === 0 ? '-' : 'M';
+      item.symbol = '-'; 
     }
   });
   
   NA.forEach(item => {
     if (item.symbol === null) {
-      item.symbol = item.entry.OC === 0 ? '+' : 'M';
+      item.symbol = '+';
     }
   });
 
   return { oldArray: OA, newArray: NA };
 }
 
+
 function runDiff() {
   const oldText = document.getElementById('oldText').value;
   const newText = document.getElementById('newText').value;
-  const resultsDiv = document.getElementById('results');
+  const diffResultArea = document.getElementById('diffResult');
 
+  // Filter out pure whitespace lines (matching original implementation)
   const oldLines = oldText.split('\n').filter(l => l.trim().length > 0);
   const newLines = newText.split('\n').filter(l => l.trim().length > 0);
 
-  const { oldArray } = heckelDiff(oldLines, newLines);
+  if (oldLines.length === 0 && newLines.length === 0) {
+    diffResultArea.value = JSON.stringify({
+      status: "Error",
+      message: "No content provided in either document."
+    }, null, 2);
+    return;
+  }
 
-  const deletions = oldArray.filter(item => item.symbol === '-');
+  try {
+    const { oldArray, newArray } = heckelDiff(oldLines, newLines);
 
-  resultsDiv.textContent = ''; 
+    // Prepare JSON output structure (matching original React output)
+    const additions = newArray
+      .filter(item => item.symbol === '+')
+      .map(item => ({
+        line: item.line,
+        index: item.index
+      }));
+    
+    const deletions = oldArray
+      .filter(item => item.symbol === '-')
+      .map(item => ({
+        line: item.line,
+        index: item.index
+      }));
+    
+    const result = {
+      additions: additions,
+      deletions: deletions,
+      stats: {
+        totalAdded: additions.length,
+        totalDeleted: deletions.length
+      }
+    };
+    
+    diffResultArea.value = JSON.stringify(result, null, 2);
 
-  if (deletions.length === 0) {
-    resultsDiv.className = 'result-box status-ok';
-    resultsDiv.innerHTML = `<h3>✅ SUCCESS: NO MISSING DATA FOUND</h3>
-<p>All lines from the Original Document were found in the Bigger Document (preserved, moved, or modified). **Deletion is safe.**</p>`;
-  } else {
-    resultsDiv.className = 'result-box status-fail';
-    resultsDiv.innerHTML = `<h3>❌ FAILURE: ${deletions.length} MISSING LINE(S) FOUND</h3>
-<p>The following lines from the Original Document were **NOT** detected in the Bigger Document. **DO NOT DELETE** the original yet.</p>
-<pre><code>${deletions.map(item => `(-) ${item.line}`).join('\n')}</code></pre>`;
+  } catch (error) {
+    console.error("Diff calculation failed:", error);
+    diffResultArea.value = JSON.stringify({
+      status: "Error",
+      message: "Diff calculation failed. Check console for details."
+    }, null, 2);
   }
 }
 
+
+function handleFileUpload(event, textareaId) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById(textareaId).value = e.target.result;
+      runDiff();
+    };
+    reader.readAsText(file);
+  }
+}
+
+// Run on load to show initial results
 window.onload = runDiff;
   </script>
 </body>
