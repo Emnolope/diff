@@ -6,28 +6,30 @@
   <title>Standalone Heckel Diff Check</title>
 
   <style>
+/* BASE STYLES (Applies to all screens, effectively the MOBILE/flex-col state) */
 body {
   font-family: sans-serif;
   display: flex;
   flex-direction: column;
-  padding: 20px;
-  gap: 15px;
-  /* Simple colors resembling the dark theme of the original React code */
+  padding: 10px;
+  gap: 10px;
   background-color: #1e1e1e;
   color: #d4d4d4;
+  height: 100vh; /* Use full height */
 }
 
 .container {
   display: flex;
-  gap: 15px;
+  flex-direction: column; /* Default: Stack vertically for mobile */
+  gap: 10px;
   width: 100%;
-  min-height: 80vh;
+  flex: 1; /* Allows the container to fill space */
 }
 
 .column {
-  flex: 1;
   display: flex;
   flex-direction: column;
+  flex: 1 0 auto; /* Allow growth, no shrinkage, minimum size auto (stacking) */
 }
 
 textarea {
@@ -46,11 +48,21 @@ textarea {
   border: 1px solid #444;
   padding: 10px;
   overflow-y: auto;
-  min-height: 200px;
+  min-height: 100px;
   font-family: monospace;
 }
 
-/* Status Colors */
+/* DESKTOP STYLES (Media Query equivalent of lg:flex-row) */
+@media (min-width: 1024px) { /* Adjust to a typical desktop breakpoint */
+  .container {
+    flex-direction: row; /* Switch to horizontal row on desktop */
+  }
+
+  .column {
+    flex: 1 1 0%; /* 1:1:1 split for desktop view */
+  }
+}
+
 .status-ok { color: #50fa7b; }
 .status-fail { color: #ff5555; }
   </style>
@@ -119,22 +131,20 @@ function heckelDiff(oldLines, newLines) {
     }
   });
 
-  // Pass 4: Growing matches forward
+  // Pass 4: Growing matches forward (FIXED logic applied here)
   for (let i = 0; i < OA.length - 1; i++) {
     if (OA[i].symbol === '=') {
-      const j = OA[i].entry.NLNO; // NLNO from the anchor line's entry
-      // Check bounds and ensure next lines haven't been matched yet
+      const j = OA[i].entry.NLNO; 
       if (j < NA.length - 1 && OA[i + 1].symbol === null && NA[j + 1].symbol === null) {
         if (OA[i + 1].line === NA[j + 1].line) {
           OA[i + 1].symbol = '=';
           NA[j + 1].symbol = '=';
-          // NO change to OLNO/NLNO in the entry here. This was the bug.
         }
       }
     }
   }
 
-  // Pass 5: Growing matches backward
+  // Pass 5: Growing matches backward (FIXED logic applied here)
   for (let i = OA.length - 1; i > 0; i--) {
     if (OA[i].symbol === '=') {
       const j = OA[i].entry.NLNO;
@@ -150,16 +160,12 @@ function heckelDiff(oldLines, newLines) {
   // Pass 6: Final determination
   OA.forEach(item => {
     if (item.symbol === null) {
-      // '-' = Deletion (not found in new doc)
-      // 'M' = Likely part of a move/change block (found at least once in new doc)
       item.symbol = item.entry.NC === 0 ? '-' : 'M';
     }
   });
   
   NA.forEach(item => {
     if (item.symbol === null) {
-      // '+' = Addition (not found in old doc)
-      // 'M' = Likely part of a move/change block (found at least once in old doc)
       item.symbol = item.entry.OC === 0 ? '+' : 'M';
     }
   });
@@ -172,16 +178,14 @@ function runDiff() {
   const newText = document.getElementById('newText').value;
   const resultsDiv = document.getElementById('results');
 
-  // Filter out pure whitespace lines
   const oldLines = oldText.split('\n').filter(l => l.trim().length > 0);
   const newLines = newText.split('\n').filter(l => l.trim().length > 0);
 
   const { oldArray } = heckelDiff(oldLines, newLines);
 
-  // Focus only on true deletions ('-') from the Original Document
   const deletions = oldArray.filter(item => item.symbol === '-');
 
-  resultsDiv.textContent = ''; // Clear existing content
+  resultsDiv.textContent = ''; 
 
   if (deletions.length === 0) {
     resultsDiv.className = 'result-box status-ok';
@@ -195,7 +199,6 @@ function runDiff() {
   }
 }
 
-// Run on load to show initial results
 window.onload = runDiff;
   </script>
 </body>
