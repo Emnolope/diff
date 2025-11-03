@@ -284,7 +284,6 @@ function heckelDiff(oldLines, newLines) {
   return { oldArray: OA, newArray: NA };
 }
 
-
 function runDiff() {
   const oldText = document.getElementById('oldText').value;
   const newText = document.getElementById('newText').value;
@@ -295,51 +294,39 @@ function runDiff() {
   const newLines = newText.split('\n').filter(l => l.trim().length > 0);
 
   if (oldLines.length === 0 && newLines.length === 0) {
-    diffResultArea.value = JSON.stringify({
-      status: "Error",
-      message: "No content provided in either document."
-    }, null, 2);
+    diffResultArea.value = "Error: No content provided in either document.";
     return;
   }
 
   try {
     const { oldArray, newArray } = heckelDiff(oldLines, newLines);
 
-    // Prepare JSON output structure (matching original React output)
     const additions = newArray
       .filter(item => item.symbol === '+')
-      .map(item => ({
-        line: item.line,
-        index: item.index
-      }));
+      .map(item => item);
     
     const deletions = oldArray
       .filter(item => item.symbol === '-')
-      .map(item => ({
-        line: item.line,
-        index: item.index
-      }));
+      .map(item => item);
     
-    const result = {
-      additions: additions,
-      deletions: deletions,
-      stats: {
-        totalAdded: additions.length,
-        totalDeleted: deletions.length
-      }
-    };
+    // --- START: CUSTOM OUTPUT FORMATTING (The change is here) ---
+    const addedLines = additions.map(item => `+>${item.index + 1}: ${item.line}`);
+    const deletedLines = deletions.map(item => `<-${item.index + 1}: ${item.line}`);
     
-    diffResultArea.value = JSON.stringify(result, null, 2);
+    const outputList = [
+      ...addedLines,
+      ...deletedLines,
+      `stats: +${additions.length} -${deletions.length}`
+    ];
+
+    diffResultArea.value = outputList.join('\n');
+    // --- END: CUSTOM OUTPUT FORMATTING ---
 
   } catch (error) {
     console.error("Diff calculation failed:", error);
-    diffResultArea.value = JSON.stringify({
-      status: "Error",
-      message: "Diff calculation failed. Check console for details."
-    }, null, 2);
+    diffResultArea.value = "Error: Diff calculation failed. Check console for details.";
   }
 }
-
 
 function handleFileUpload(event, textareaId) {
   const file = event.target.files[0];
